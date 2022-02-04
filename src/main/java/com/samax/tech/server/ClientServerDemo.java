@@ -1,28 +1,16 @@
 package com.samax.tech.server;
 
+import com.samax.tech.tcp.server.ChatServer;
+
 import java.util.concurrent.TimeUnit;
+
+import com.samax.tech.tcp.client.Client;
 
 public class ClientServerDemo {
 
 	public static void main(String[] args) {
-		String address = "localhost";
-		int port = 8080;
-
-		Server server = new Server(address, port);
-		server.start();
+		new Thread(() -> new ChatServer().start("localhost", 3333)).start();
 		
-		Client client = new Client("Samax");
-		client.start();
-		
-		
-		
-
-		try {
-			TimeUnit.SECONDS.sleep(3);
-			client.sendMessage("Hello World!");
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
 	}
 
 }

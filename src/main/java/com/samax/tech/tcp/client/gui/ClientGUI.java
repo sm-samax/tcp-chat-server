@@ -1,4 +1,4 @@
-package com.samax.tech.server.gui;
+package com.samax.tech.tcp.client.gui;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
@@ -7,6 +7,11 @@ import java.awt.FlowLayout;
 import java.awt.LayoutManager;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -14,16 +19,17 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
-import com.samax.tech.server.Client;
-import com.samax.tech.server.Server;
+import com.samax.tech.tcp.client.Client;
+import com.samax.tech.tcp.server.ChatServer;
 
 public class ClientGUI {
 
 	private Client client;
-	private boolean connected;
-	
+	private AtomicBoolean connected = new AtomicBoolean(false);
+	private Thread receiveTask;
 	
 	private JFrame frame;
 	private JList<String> messages;
@@ -34,24 +40,42 @@ public class ClientGUI {
 	private JButton btn_connect;
 	private JButton btn_disconnect;
 	private JButton btn_quit;
-	private JLabel lbl_serverState;
 	
 	public ClientGUI() {
 		initGUI();
 		initEvents();
+		
+		receiveTask = new Thread(() -> {
+			while(true)
+			{
+				if(connected.get())
+				{
+					try {
+						String msg = client.receiveMessage();
+						if(!msg.isBlank())					
+							list.addElement(msg);
+					} catch (Exception e) {
+						continue;
+					}
+				}
+			}
+		});
+		
+		receiveTask.start();
 	}
 
 	private void initGUI() {
 		frame = new JFrame("Chat Application");
 		LayoutManager layout = new BorderLayout(5, 5);
 		frame.getContentPane().setLayout(layout);
-		frame.setLocationRelativeTo(null);
 		
 		Dimension dimensionTf = new Dimension(100, 25);
 		
 		tf_name = new JTextField();
 		tf_name.setMinimumSize(dimensionTf);
 		tf_name.setPreferredSize(dimensionTf);
+		
+		dimensionTf = new Dimension(225, 25);
 		
 		tf_message = new JTextField();
 		tf_message.setMinimumSize(dimensionTf);
@@ -69,11 +93,14 @@ public class ClientGUI {
 	
 		Dimension dimensionMessages = new Dimension(150, 150);
 		
+		
 		list = new DefaultListModel<>();
 		
 		messages = new JList<>(list);
-		messages.setMinimumSize(dimensionMessages);
-		messages.setPreferredSize(dimensionMessages);
+		
+		JScrollPane scrollPane = new JScrollPane(messages);
+		scrollPane.setMinimumSize(dimensionMessages);
+		scrollPane.setPreferredSize(dimensionMessages);
 		
 		JLabel lbl_username = new JLabel("Username:");
 		
@@ -93,10 +120,11 @@ public class ClientGUI {
 		down.add(btn_send);
 		
 		frame.add(top, BorderLayout.NORTH);
-		frame.add(messages, BorderLayout.CENTER);
+		frame.add(scrollPane, BorderLayout.CENTER);
 		frame.add(down, BorderLayout.SOUTH);
 		
 		frame.pack();
+		frame.setLocationRelativeTo(null);
 		frame.setVisible(true);
 	}
 	
@@ -116,7 +144,6 @@ public class ClientGUI {
 		btn_disconnect.addActionListener(e -> disconnect());
 		
 		btn_send.addActionListener(e -> send());
-		
 	}
 	
 	private void connect() 
@@ -125,13 +152,19 @@ public class ClientGUI {
 			JOptionPane.showMessageDialog(frame, "Username field can't be empty!", "Invalid connection", JOptionPane.ERROR_MESSAGE);
 		else
 		{
-			btn_connect.setEnabled(false);
-			btn_disconnect.setEnabled(true);
-			btn_send.setEnabled(true);
-			
-			connected = true;
 			client = new Client(tf_name.getText());
-			client.start();
+			try {
+				client.connect("localhost", 3333);
+				
+				tf_name.setEnabled(false);
+				btn_connect.setEnabled(false);
+				btn_disconnect.setEnabled(true);
+				btn_send.setEnabled(true);
+				
+				connected.set(true);
+			} catch (IOException e) {
+				JOptionPane.showMessageDialog(frame, "Server is not available yet!", "Unable to connect", JOptionPane.ERROR_MESSAGE);
+			}
 		}
 	}
 	
@@ -143,11 +176,12 @@ public class ClientGUI {
 	
 	private void disconnect()
 	{
-		if(client != null && connected)
+		if(client != null && connected.get())
 			client.disconnect();
 		
-		connected = false;
+		connected.set(false);
 		
+		tf_name.setEnabled(true);
 		btn_connect.setEnabled(true);
 		btn_disconnect.setEnabled(false);
 		btn_send.setEnabled(false);
@@ -157,14 +191,33 @@ public class ClientGUI {
 	{
 		if(!tf_message.getText().isBlank())
 		{
-			client.sendMessage(String.format("%s: %s", client.getUsername(), tf_message.getText()));			
-			list.addElement(client.receiveMessage());
+			this.receiveTask.interrupt();
+		
+			client.sendMessage(String.format("%s: %s", client.getName(), tf_message.getText()));
 			tf_message.setText("");
 		}
 	}
-	
-	public static void main(String[] args) {
-		new Server().start();
+
+	public static void main(String[] args) throws UnknownHostException {
+		new Thread(() -> new ChatServer().start("localhost", 3333)).start();
+		new Thread(() -> new ClientGUI()).start();
+		new Thread(() -> new ClientGUI()).start();
 		new ClientGUI();
+		
+//		Runnable task = () -> {
+//			System.out.println("Starting task...");
+//			
+//			try {
+//				TimeUnit.SECONDS.sleep(2);
+//				System.out.println(Thread.currentThread().getName() + ": Finished!");
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//				System.out.println(Thread.currentThread().getName() + ": Interrupted!");
+//			}
+//		};
+//		
+//		Thread t1 = new Thread(task, "Thread-1");
+//		t1.start();
+//		t1.interrupt();
 	}
 }

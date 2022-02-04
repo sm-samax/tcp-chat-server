@@ -14,22 +14,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 public class Client extends Thread {
 
 	private Socket socket;
 	private String name;
-	
+
 	private String host;
 	private int port;
-	
-	private BufferedReader in;
-	private PrintWriter out;
+
+//	private BufferedReader in;
+//	private PrintWriter out;
 
 	public Client(String name) {
 		this(name, "localhost", 8080);
 	}
-	
+
 	public Client(String name, String host, int port) {
 		this.name = name;
 		this.host = host;
@@ -40,10 +41,7 @@ public class Client extends Thread {
 		try {
 			socket = new Socket(host, port);
 			System.out.println("Connecting client...");
-			in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			out = new PrintWriter(socket.getOutputStream(), true);
-		} 
-		catch (UnknownHostException e) {
+		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -51,34 +49,35 @@ public class Client extends Thread {
 	}
 
 	public void sendMessage(String message) {
-		
-		System.out.println("Sending...");
-		out.print(message.getBytes());
-		System.out.println("Sent!");
-		receiveMessage();
+		try {
+			socket.getOutputStream().write(message.getBytes());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
 	}
-	
+
 	public String receiveMessage() {
 		try {
-			return new String(in.readLine());
+			System.out.println("Client receiving...");
+			return new String(socket.getInputStream().readAllBytes());
 		} catch (IOException e) {
 			return "";
 		}
 	}
 
-	public void disconnect()
-	{
+	public void disconnect() {
 		try {
 			socket.close();
 		} catch (IOException e) {
 			return;
 		}
 	}
-	
+
 	public Socket getSocket() {
 		return socket;
 	}
-	
+
 	public String getUsername() {
 		return name;
 	}

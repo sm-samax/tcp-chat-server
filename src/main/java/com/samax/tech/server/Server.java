@@ -32,50 +32,22 @@ public class Server extends Thread {
 	}
 
 	public void run() {
-		exe.submit(clearDisconnectedClients());
-
 		try {
 			this.server = new ServerSocket(port);
 			System.out.println(String.format("Starting server on %s:%d...", address, port));
 
+			Socket client = server.accept();
+			
+			System.out.println("Connected");
+			
 			while (running) {
-				waitForClients();
+				String message = new String(client.getInputStream().readAllBytes());
+				System.out.println("Server >>> Received: " + message);
 			}
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private Runnable clearDisconnectedClients() {
-		return () -> {
-			while (running) {
-				for (Socket s : clients)
-					if (s.isClosed()) {
-						clients.remove(s);
-						System.out.println("Disconnected!");
-					}
-			}
-		};
-	}
-
-	private void waitForClients() {
-		try {
-			Socket client = server.accept();
-			exe.submit(serverTask(client));
-		} catch (Exception e) {
-			return;
-		}
-	}
-
-	private Runnable serverTask(Socket client) {
-		return () -> {
-			System.out.println("Connected!");
-			clients.add(client);
-
-			while(running)
-				receiveMessage(client);
-		};
 	}
 
 	private void disconnectClient(Socket client) {
@@ -85,33 +57,6 @@ public class Server extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	private void receiveMessage(Socket client) {
-		String msg = null;
-
-		try {
-			msg = new String(client.getInputStream().readAllBytes());
-			if(!msg.isBlank())
-			{
-				System.out.println("Received!");
-				System.out.println("From client: " + msg);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-//		if(msg != null)
-//			sendMessageToAllClients(msg);
-	}
-
-	private void sendMessageToAllClients(String msg) {
-		for (Socket client : clients)
-			try {
-				client.getOutputStream().write(msg.getBytes());
-			} catch (IOException e) {
-				continue;
-			}
 	}
 
 	public synchronized void shutDown() {
@@ -127,9 +72,5 @@ public class Server extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-
-	public static void main(String[] args) {
-		new Server().start();
 	}
 }

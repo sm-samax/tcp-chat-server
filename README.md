@@ -25,5 +25,9 @@
 
 <p>Made straightforward to use and handles all illegal inputs.</p>
 
+![chat-server](https://user-images.githubusercontent.com/89316582/152655005-98eaea91-844a-4ad1-b817-51617feaf068.png)
+
 <p></p>
+
+![chat-application](https://user-images.githubusercontent.com/89316582/152655035-fed07953-b288-4b7b-a602-2d11846411f3.png)
 

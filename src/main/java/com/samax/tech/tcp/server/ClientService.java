@@ -5,7 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-public class ClientService extends Thread {
+public class ClientService extends Thread implements AutoCloseable{
 
 	private ChatServer server;
 	private Socket client;
@@ -19,6 +19,8 @@ public class ClientService extends Thread {
 
 		oos = new ObjectOutputStream(client.getOutputStream());
 		ois = new ObjectInputStream(client.getInputStream());
+		
+		System.out.println("Connected!");
 	}
 
 	@Override
@@ -29,6 +31,8 @@ public class ClientService extends Thread {
 				server.dispatchReceivedMessage(msg);
 			}
 		} catch (Exception e) {}
+		
+		server.remove(this);
 	}
 
 	public void sendMessage(String msg) {
@@ -37,5 +41,10 @@ public class ClientService extends Thread {
 		} catch (IOException e) {
 			System.out.println("Can't send message!");
 		}
+	}
+
+	@Override
+	public void close() throws IOException {
+		client.close();
 	}
 }

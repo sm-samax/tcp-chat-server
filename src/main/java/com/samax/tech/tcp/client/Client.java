@@ -10,24 +10,21 @@ public class Client {
 	private Socket socket;
 
 	private String name;
-	
+
 	private ObjectOutputStream oos;
 	private ObjectInputStream ois;
 
 	public Client(String name) {
 		this.name = name;
 	}
-	
-	public void connect(String host, int port) throws IOException
-	{
-			this.socket = new Socket(host, port);
-			
-			oos = new ObjectOutputStream(socket.getOutputStream());
-			ois = new ObjectInputStream(socket.getInputStream());
-			
-			System.out.println("Connected!");
+
+	public void connect(String host, int port) throws IOException {
+		this.socket = new Socket(host, port);
+
+		oos = new ObjectOutputStream(socket.getOutputStream());
+		ois = new ObjectInputStream(socket.getInputStream());
 	}
-	
+
 	public String receiveMessage() {
 		try {
 			return (String) ois.readObject();
@@ -38,24 +35,19 @@ public class Client {
 		}
 	}
 
-	public void sendMessage(String msg)
-	{
-		try {
-			oos.writeObject(msg);
-		} catch (IOException e) {
-			System.out.println("Can't send message!");
-		}
+	public void sendMessage(String msg) throws IOException {
+		oos.writeObject(msg);
 	}
-	
+
 	public String getName() {
 		return name;
 	}
 
-	public void disconnect() 
-	{
-		for(var closeable : new AutoCloseable[]{oos, ois, socket})
+	public void disconnect() {
+		for (var closeable : new AutoCloseable[] { oos, ois, socket })
 			try {
 				closeable.close();
-			} catch (Exception e) {}
+			} catch (Exception e) {
+			}
 	}
 }

@@ -15,15 +15,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 
 import com.samax.tech.tcp.client.Client;
 import com.samax.tech.tcp.server.ChatServer;
+import com.samax.tech.tcp.server.gui.ChatServerGUI;
 
 public class ClientGUI {
 
@@ -40,6 +43,7 @@ public class ClientGUI {
 	private JButton btn_connect;
 	private JButton btn_disconnect;
 	private JButton btn_quit;
+	private ConnectionDialog dialog;
 	
 	public ClientGUI() {
 		initGUI();
@@ -68,6 +72,8 @@ public class ClientGUI {
 		frame = new JFrame("Chat Application");
 		LayoutManager layout = new BorderLayout(5, 5);
 		frame.getContentPane().setLayout(layout);
+		
+		dialog = new ConnectionDialog();
 		
 		Dimension dimensionTf = new Dimension(100, 25);
 		
@@ -152,18 +158,23 @@ public class ClientGUI {
 			JOptionPane.showMessageDialog(frame, "Username field can't be empty!", "Invalid connection", JOptionPane.ERROR_MESSAGE);
 		else
 		{
-			client = new Client(tf_name.getText());
-			try {
-				client.connect("localhost", 3333);
-				
-				tf_name.setEnabled(false);
-				btn_connect.setEnabled(false);
-				btn_disconnect.setEnabled(true);
-				btn_send.setEnabled(true);
-				
-				connected.set(true);
-			} catch (IOException e) {
-				JOptionPane.showMessageDialog(frame, "Server is not available yet!", "Unable to connect", JOptionPane.ERROR_MESSAGE);
+			int result = dialog.show();
+			
+			if(result == JOptionPane.OK_OPTION)
+			{
+				client = new Client(tf_name.getText());
+				try {
+					client.connect(dialog.getAddress(), dialog.getPort());
+					
+					tf_name.setEnabled(false);
+					btn_connect.setEnabled(false);
+					btn_disconnect.setEnabled(true);
+					btn_send.setEnabled(true);
+					
+					connected.set(true);
+				} catch (IOException e) {
+					JOptionPane.showMessageDialog(frame, "Server is not available yet!", "Unable to connect", JOptionPane.ERROR_MESSAGE);
+				}
 			}
 		}
 	}
@@ -180,6 +191,7 @@ public class ClientGUI {
 			client.disconnect();
 		
 		connected.set(false);
+		list.clear();
 		
 		tf_name.setEnabled(true);
 		btn_connect.setEnabled(true);
@@ -193,31 +205,18 @@ public class ClientGUI {
 		{
 			this.receiveTask.interrupt();
 		
-			client.sendMessage(String.format("%s: %s", client.getName(), tf_message.getText()));
-			tf_message.setText("");
+			try {
+				client.sendMessage(String.format("%s: %s", client.getName(), tf_message.getText()));
+				tf_message.setText("");
+			} catch (IOException e) {
+				JOptionPane.showMessageDialog(frame,
+						"Cant send message, maybe your network not work properly or the server was closed.",
+						"Unable to send message", JOptionPane.ERROR_MESSAGE);
+			}
 		}
 	}
 
-	public static void main(String[] args) throws UnknownHostException {
-		new Thread(() -> new ChatServer().start("localhost", 3333)).start();
-		new Thread(() -> new ClientGUI()).start();
-		new Thread(() -> new ClientGUI()).start();
+	public static void main(String[] args) throws UnknownHostException {		
 		new ClientGUI();
-		
-//		Runnable task = () -> {
-//			System.out.println("Starting task...");
-//			
-//			try {
-//				TimeUnit.SECONDS.sleep(2);
-//				System.out.println(Thread.currentThread().getName() + ": Finished!");
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//				System.out.println(Thread.currentThread().getName() + ": Interrupted!");
-//			}
-//		};
-//		
-//		Thread t1 = new Thread(task, "Thread-1");
-//		t1.start();
-//		t1.interrupt();
 	}
 }
